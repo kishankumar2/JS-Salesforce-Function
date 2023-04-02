@@ -14,10 +14,11 @@ import  Excel  from "exceljs";
 import fs from "fs";
 
 export default async function (event, context, logger) {
-  logger.info("Invoking Exceljsexample");
-
+  logger.info("Invoking Exceljs Function");
+  
+  // Query Salesforce to get Account, Contact and Opportunity Records
   var results = await context.org.dataApi.query('SELECT Id, Name,AnnualRevenue , Industry, (SELECT Id,Name,Phone FROM Contacts),(Select ID ,Name, StageName,Amount , Probability,CloseDate from Opportunities ) FROM Account');
-                                         
+  //Creating the Instance of Excel Workbook                                       
   const wb = new Excel.Workbook();
   // Adding a new WorkSheet in the work Book Name of the Sheet is Accounts
   const AccountSheet = wb.addWorksheet('Accounts', {properties:{tabColor:{argb:'264653'}}});
@@ -25,14 +26,12 @@ export default async function (event, context, logger) {
   // Adding a new WorkSheet in the work Book Name of the Sheet is Contacts
   const ContactSheet = wb.addWorksheet('Contacts',{properties:{tabColor:{argb:'e76f51'}}});
   ContactSheet.addRows([['ID','Contact Name','Phone Number','Account ID']]);
-  
+  // Adding a new WorkSheet in the work Book Name of the Sheet is Opportunities
   const OppSheet = wb.addWorksheet('Opportunities',{properties:{tabColor:{argb:'2a9d8f'}}});
-  //OppSheet.addRows([['ID','Opportunity Name','StageName','Probability','CloseDate']]);
+ 
+  //this Array will hold Opportunity Rows to be added in the Table
   var oppRows = [];
-
-
-  
-
+ 
   logger.info('Parsing Starts');
   try {  
   let recordsToProcess = results.records;
@@ -59,6 +58,7 @@ export default async function (event, context, logger) {
   }
 
   logger.info('Parsing Ends',oppRows.length);
+  //Adding a Table in Opportunity Worksheet
   OppSheet.addTable({
     name: 'MyTable',
     ref: 'A1',
@@ -78,6 +78,7 @@ export default async function (event, context, logger) {
     ],
     rows: oppRows,
   });
+  //Formatting cells of Account Sheet  
   AccountSheet.columns.forEach(column => {
     column.border = {
       top: { style: "thick" },
@@ -86,6 +87,7 @@ export default async function (event, context, logger) {
       right: { style: "thick" }
     };
   });
+   //Formatting cells of Opportunity Sheet
   OppSheet.columns.forEach(column => {
     column.border = {
       top: { style: "thick" },
@@ -94,7 +96,7 @@ export default async function (event, context, logger) {
       right: { style: "thick" }
     };
   });
-
+ // Writing the Excel to a File
   const fileName = './assets/simple.xlsx';
   await wb.xlsx.writeFile(fileName)
     .then(() => {
@@ -105,10 +107,10 @@ export default async function (event, context, logger) {
     });
   
 
-
+  // Reading the Excel Data in Base64 to be uploaded in Salesforce
   var dataa =fs.readFileSync(fileName,'base64');
   logger.info('dataa'+dataa);
-
+//Creating a ContentVersion Salesforce Record with the Base64 Data
 const contentVersion = {
   type: "ContentVersion",
   fields: {
